@@ -75,7 +75,7 @@ var styleFunction = function (feature) {
 
 var geojsonObject = {
   'type': 'FeatureCollection',
-  'crs': {
+  'crs': {  // 좌표 참조 시스템 유형
     'type': 'name',
     'properties': {
       'name': 'EPSG:3857',
