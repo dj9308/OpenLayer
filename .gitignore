@@ -2,6 +2,9 @@
 # Created by https://www.toptal.com/developers/gitignore/api/windows,java,java-web,visualstudiocode,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,java,java-web,visualstudiocode,node
 
+## directory ##
+config/
+
 ### Java ###
 # Compiled class file
 *.class

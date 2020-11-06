@@ -6,7 +6,7 @@ var image = new ol.style.Circle({
 
 var styles = { // 각 도형마다 디자인 적용
   'Point': new ol.style.Style({
-    image: image,
+    image: image, // ol.style 형식으로 사용 가능
   }),   
   'LineString': new ol.style.Style({
     stroke: new ol.style.Stroke({
@@ -188,7 +188,6 @@ var geojsonObject = {
       },
     } ],
 };
-
 var vectorSource = new ol.source.Vector({
   features: new ol.format.GeoJSON().readFeatures(geojsonObject), //벡터 소스
 });
@@ -212,3 +211,15 @@ var map = new ol.Map({
     zoom: 2,
   }),
 });
+
+document.getElementById('zoom-out').onclick = function () {
+  var view = map.getView();
+  var zoom = view.getZoom();
+  view.setZoom(zoom - 1);
+};
+
+document.getElementById('zoom-in').onclick = function () {
+  var view = map.getView();
+  var zoom = view.getZoom();
+  view.setZoom(zoom + 1);
+};
