@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>turf.js</title>
+    <!-- turf.js -->
+    <script src='https://unpkg.com/@turf/turf/turf.min.js'></script>
+
+    <!-- openLayers.js -->
+    <link rel="stylesheet" href="config/ol.css" type="text/css">
+    <script src="config/ol.js"></script>
+    <style>
+      .map {
+        width: 100%;
+        height:400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="margin-bottom: 10px; float: left;">
+        <button value="Polygon" onclick="addInteraction(this)" class="button">Polygon</button>
+        <button value="LineString" onclick="addInteraction(this)" class="button">LineString</button>
+        <button onclick="startCutting()">Split</button>
+        <button onclick="selectAndDrag()">Drag</button>
+        <button onclick="mergePolygons()">merge</button>
+    </div>
+    <div id="map" class="map"></div>
+    <script src="index.js"></script>
+  </body>
+</html>
