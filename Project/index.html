@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="ko-kr">
+  <head>
+    <title>drawFeature</title>
+    <!-- openLayers.js -->
+    <link rel="stylesheet" href="config/ol.css" type="text/css">
+    <script src="config/ol.js"></script>
+    <!-- jquery -->
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <link rel="stylesheet" href="index.css" />
+    <style>
+      .map {
+        width: 100%;
+        height:400px;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="margin-bottom: 10px; float: left;">
+        <button value="LineString" onclick="addInteraction(this)" class="button">거리재기</button>
+        <button value="Polygon" onclick="addInteraction(this)" class="button">면적재기</button>
+    </div>
+    <div id="map" class="map"></div>
+    <script src="map.js"></script>
+  </body>
+</html>

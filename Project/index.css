@@ -1,0 +1,55 @@
+.map {
+  width: 100%;
+  height:400px;
+}
+.ol-tooltip {
+  position: relative;
+  color: red;
+  background-color: white;
+  padding: 4px 5px;
+  opacity: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+  font-size: 11px;
+}
+.ol-tooltip-checkpoint {
+  pointer-events: none;
+  position: absolute;
+  border: 1px solid red;
+  width: auto;
+  left: -50px;
+  height: 24px;
+  bottom: -12px;
+  overflow: hidden;
+}
+.ol-tooltip-measure {
+  position: absolute;
+  color: black;
+  width: 145px;
+  border: 1px solid black;
+  bottom: -100px;
+  overflow: hidden;
+}
+.ol-tooltip-static {
+  float: left;
+  position: absolute;
+  color: black;
+  width: 145px auto;
+  border: 1px solid black;
+  bottom: -45px;
+  overflow: hidden;
+}
+.ol-tooltip-measure:before,
+.ol-tooltip-static:before {
+  border-top: 6px solid rgba(0, 0, 0, 0.5);
+  border-right: 6px solid transparent;
+  border-left: 6px solid transparent;
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  margin-left: -7px;
+  left: 50%;
+}
+.ol-tooltip-static:before {
+  border-top-color: #ffcc33;
+}
