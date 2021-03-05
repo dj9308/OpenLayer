@@ -1,5 +1,5 @@
-let drawFeature;
-let drawPoint;
+let drawLineString;
+let drawPolygon;
 let measureTooltipElement;
 let measureTooltip;
 
@@ -7,15 +7,15 @@ const raster = new ol.layer.Tile({
   source: new ol.source.OSM()
 });
 
-const sourceDrawnFeature = new ol.source.Vector({ wrapX: false });
-const sourceDrawnPoint = new ol.source.Vector({ wrapX: false });
+const sourceDrawnLineString = new ol.source.Vector({ wrapX: false });
+const sourceDrawnPolygon = new ol.source.Vector({ wrapX: false });
 
-const vectorStyle = new ol.style.Style({
+const featureStyle = new ol.style.Style({
   fill: new ol.style.Fill({
-    color: 'rgba(255, 255, 255, 0.2)',
+    color: 'rgba(255, 255, 255, 0.7)',
   }),
   stroke: new ol.style.Stroke({
-    color: '#ff0000',
+    color:'#ff0000',
     width: 2,
   }),
   image: new ol.style.Circle({
@@ -27,26 +27,28 @@ const vectorStyle = new ol.style.Style({
       color: 'rgba(255, 255, 255, 0.7)',
     }),
   }),
-})
-
-const drawnFeature = new ol.layer.Vector({
-  source: sourceDrawnFeature,
-  style: vectorStyle
 });
 
-const drawnPoint = new ol.layer.Vector({
-  source: sourceDrawnPoint,
-  style: vectorStyle
+const drawnLineString = new ol.layer.Vector({
+  source: sourceDrawnLineString,
+  style: featureStyle
+});
+
+const drawnPolygon = new ol.layer.Vector({
+  source: sourceDrawnPolygon,
+  style: featureStyle
 });
 
 const map = new ol.Map({
-  layers: [raster, drawnFeature, drawnPoint],
+  layers: [raster, drawnLineString, drawnPolygon],
+  moveTolerance: 3,
   target: 'map',
   view: new ol.View({
     center: [-11000000, 4600000],
     zoom: 14
   })
 });
+
 
 function createMeasureTooltip() {
   if (measureTooltipElement) {
@@ -61,16 +63,6 @@ function createMeasureTooltip() {
   });
   map.addOverlay(measureTooltip);
 }
-
-const pointerMoveHandler = function (evt) {
-  if (evt.dragging) {
-    return;
-  }
-  helpTooltipElement.innerHTML = helpMsg;
-  helpTooltip.setPosition(evt.coordinate);
-
-  helpTooltipElement.classList.remove('hidden');
-};
 
 const formatRelativeLength = function (currentLength, formalLength) {
   const length = currentLength;
@@ -87,7 +79,7 @@ const formatRelativeLength = function (currentLength, formalLength) {
   }
 }
 
-const formatLength = function (len) {
+const formatTotalLength = function (len) {
   const length = len;
   let output;
 
@@ -99,8 +91,8 @@ const formatLength = function (len) {
   return output;
 };
 
-const formatArea = function (polygon) {
-  const area = getArea(polygon);
+const formatTotalArea = function (polygon) {
+  const area = ol.sphere.getArea(polygon);
   let output;
   if (area > 10000) {
     output = Math.round((area / 1000000) * 100) / 100 + ' ' + 'km<sup>2</sup>';
@@ -110,7 +102,7 @@ const formatArea = function (polygon) {
   return output;
 };
 
-function paintMeasureOverlay(relativeOutput, totalOutput) {
+function paintLineStringOverlay(relativeOutput, totalOutput) {
   if (relativeOutput !== undefined) {
     measureTooltipElement.innerHTML = `
     상대거리 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:red">${relativeOutput}</span><br/>
@@ -120,80 +112,114 @@ function paintMeasureOverlay(relativeOutput, totalOutput) {
     <span>지정완료 : 더블클릭</span></div>`;
   } else {
     measureTooltipElement.innerHTML = `총거리 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:red">${totalOutput}</span>
-      <button id="deleteFeature">✖</button>`;
+      <button class="deleteLineString">✖</button>`;
   }
 }
 
-function removeInteraction() {
-  map.removeInteraction(drawFeature);
-  map.removeInteraction(drawPoint);
+function paintPolygonOverlay(chkDrawEnd, Output) {
+  if (!chkDrawEnd) {
+    measureTooltipElement.innerHTML = `
+    총면적 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:red">${Output}</span><br/>
+    <hr>
+    <div><span>부분취소 : 백스페이스</span><br/>
+    <span>지정완료 : 더블클릭</span></div>`;
+  } else {
+    measureTooltipElement.innerHTML = `총면적 : &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span style="color:red">${Output}</span>
+      <button class="deletePolygon">✖</button>`;
+  }
 }
 
 function addInteraction(button) {
+  const value = button.value;
+
   let sketch;
   let listener;
+  let polygonOverlayPosition;
   let tooltipCoord;
   let currentLength;
   let formalLength;
   let output;
   let checkPointElement;
   let checkPointTooltip;
+  let geom;
+  let drawChk = false;
   let idNum = 0;
-  let pointCnt = 0;
-  
-  const value = button.value;
-  if (drawFeature !== null) {
-    removeInteraction();
+  let relativeLengthAry = [];
+
+  if (drawLineString !== null || drawPolygon !== null) {
+    map.removeInteraction(drawLineString);
+    map.removeInteraction(drawPolygon);
   }
-  
-  drawFeature = new ol.interaction.Draw({
-    source: sourceDrawnFeature,
-    type: value,
-    style: vectorStyle
-  });
-  
-  drawPoint = new ol.interaction.Draw({
-    source: sourceDrawnPoint,
-    type: "Point",
-    style: vectorStyle
-  });
-  
-  map.addInteraction(drawFeature);
-  map.addInteraction(drawPoint);
-  createMeasureTooltip();
-  
-  map.on('dblclick', function (evt) {
-    pointCnt--;
-  });
-  
+console.log(map.getInteractions());
+
   map.on('click', function (evt) {
-    pointCnt++;
-    if (output !== undefined && tooltipCoord !== undefined) {
-      console.log(pointCnt);
-      checkPointElement.innerHTML = output;
-      checkPointTooltip.setPosition(tooltipCoord);
-      map.addOverlay(checkPointTooltip);
-      if (currentLength !== undefined) {
-        formalLength = currentLength;
-        paintMeasureOverlay('0 m', output);
+    if(sketch !== null && geom !== undefined){
+      if(sketch.getGeometry().getCoordinates().length>=3 && geom instanceof ol.geom.LineString){
+        checkPointElement.innerHTML = output;
+        checkPointTooltip.setPosition(tooltipCoord);
+        map.addOverlay(checkPointTooltip);
+        if (currentLength !== undefined) {
+          if(drawChk){
+            formalLength = undefined;
+            currentLength = undefined;
+            drawChk = false;
+            sketch = null;
+          }else{
+            formalLength = currentLength;
+            relativeLengthAry.push(formalLength);
+          }
+          paintLineStringOverlay('0 m', output);
+        }
+      }else if(sketch.getGeometry().getCoordinates().length>=2 && geom instanceof ol.geom.LineString){
+        map.addOverlay(measureTooltip);
+      }else if(sketch.getGeometry().getCoordinates()[0].length>=2 && geom instanceof ol.geom.Polygon){
+        map.addOverlay(measureTooltip);
       }
     }
   });
-  
-  drawFeature.on('drawstart', function (evt) {
-    sketch = evt.feature;
-    tooltipCoord = evt.coordinate;
-    
-    listener = sketch.getGeometry().on('change', function (evt) {
-      const geom = evt.target;
-      if (geom instanceof ol.geom.Polygon) {
-        output = formatArea(geom);
-        tooltipCoord = geom.getInteriorPoint().getCoordinates();
-        measureTooltipElement.innerHTML = '총거리 : ' + output;
-        measureTooltip.setPosition(tooltipCoord);
-      } else if (geom instanceof ol.geom.LineString) {
+
+  if(value ==='LineString'){
+    drawLineString = new ol.interaction.Draw({
+      source: sourceDrawnLineString,
+      clickTolerance: 6,
+      type: value,
+      style: featureStyle
+    });
+      
+    map.addInteraction(drawLineString);
+    createMeasureTooltip();
+
+    document.addEventListener('keydown', function(e){
+      if(sketch !== null){
+        if(e.key ==='Backspace' && sketch.getGeometry().getCoordinates().length>=2){
+          drawLineString.removeLastPoint();
+          const bar = document.querySelectorAll(`.lineString_${idNum}`);
+          if(bar !== undefined){
+            relativeLengthAry.pop();
+            formalLength = relativeLengthAry[relativeLengthAry.length-1];
+            let relativeOutput = formatRelativeLength(currentLength, formalLength);
+            if (relativeOutput === undefined) {
+              relativeOutput = output;
+            };
+            paintLineStringOverlay(relativeOutput, output);
+            $(bar[0]).remove();
+          }
+        }
+        if(sketch.getGeometry().getCoordinates().length===1){
+          map.removeOverlay(measureTooltip);
+        }
+      }
+    });
+
+    drawLineString.on('drawstart', function (evt) {
+      sketch = evt.feature;
+      tooltipCoord = evt.coordinate;
+      console.log(sketch.getGeometry());
+
+      listener = sketch.getGeometry().on('change', function (evt) {
+        geom = evt.target;
         currentLength = ol.sphere.getLength(geom);
-        output = formatLength(currentLength);
+        output = formatTotalLength(currentLength);
         tooltipCoord = geom.getLastCoordinate();
         checkPointElement = document.createElement('div');
         checkPointElement.className = `ol-tooltip ol-tooltip-checkpoint lineString_${idNum}`;
@@ -206,38 +232,110 @@ function addInteraction(button) {
         if (relativeOutput === undefined) {
           relativeOutput = output;
         };
-        paintMeasureOverlay(relativeOutput, output);
+        paintLineStringOverlay(relativeOutput, output);
         measureTooltip.setPosition(tooltipCoord);
-      };
+      });
     });
-  });
+
+    drawLineString.on('drawend', function (evt) {
+      drawChk=true;
+      relativeLengthAry=[];
+      paintLineStringOverlay(undefined, output);
+      measureTooltipElement.id = `lineString_${idNum}`;
+      idNum++;
+      checkPointTooltip.setPosition(undefined);
+      measureTooltipElement.className = 'ol-tooltip ol-tooltip-static';
+      measureTooltipElement = null;
+      measureTooltip.setOffset([0, -15]);
+      createMeasureTooltip();
+      ol.Observable.unByKey(listener);
+      
+      document.querySelector('.deleteLineString').addEventListener('click', function (e) {
+        idNum--;
+        this.parentNode.parentNode.removeChild(this.parentNode);
+        $(`.${this.parentNode.id}`).remove();
   
-  drawFeature.on('drawend', function (evt) {
-    let pointAry = [];
-    pointAry.push(pointCnt);
-    console.log(pointAry[pointAry.length-1]);
-    paintMeasureOverlay(undefined, output);
-    measureTooltipElement.id = `lineString_${idNum}`;
-    idNum++;
-    document.querySelector('#deleteFeature').addEventListener('click', function (e) {
-      // deleteFeature();
-      sourceDrawnFeature.removeFeature(sourceDrawnFeature.getFeatures()[sourceDrawnFeature.getFeatures().length - 1]);
-      this.parentNode.parentNode.removeChild(this.parentNode);
-      $(`.${this.parentNode.id}`).remove();
-      const currentNum = this.parentNode.id.split('_')[1] * 1;
-      for (let i = 0; i < pointAry[currentNum]; i++) {
-        sourceDrawnPoint.removeFeature(sourceDrawnPoint.getFeatures()[currentNum]);
-      }
-      pointCnt -= pointAry[currentNum];
-      pointAry.pop(currentNum);
+        const currentNum = this.parentNode.id.split('_')[1] * 1;
+        sourceDrawnLineString.removeFeature(sourceDrawnLineString.getFeatures()[currentNum]);
+        let i=currentNum;
+        while(i<sourceDrawnLineString.getFeatures().length){
+          document.querySelector(`#lineString_${i+1}`).id=`lineString_${i}`;
+          $(`.lineString_${i+1}`).addClass(`lineString_${i}`);
+          $(`.lineString_${i+1}`).removeClass(`lineString_${i+1}`);
+          i++;
+        }
+      });
     });
-    measureTooltipElement.className = 'ol-tooltip ol-tooltip-static';
-    measureTooltip.setOffset([0, -15]);
-    sketch = null;
-    measureTooltipElement = null;
+
+  }else if(value ==='Polygon'){
+    drawPolygon = new ol.interaction.Draw({
+      source: sourceDrawnPolygon,
+      clickTolerance: 6,
+      type: value,
+      style: featureStyle
+    });
+
+    map.addInteraction(drawPolygon);
     createMeasureTooltip();
-    ol.Observable.unByKey(listener);
-    sourceDrawnPoint.removeFeature(sourceDrawnPoint.getFeatures()[sourceDrawnPoint.getFeatures().length - 1]);
-    checkPointTooltip.setPosition(undefined);
-  });
+
+    document.addEventListener('keydown', function(e){
+      if(sketch !== null){
+        if(e.key ==='Backspace' && sketch.getGeometry().getCoordinates()[0].length>=3){
+          drawPolygon.removeLastPoint();
+        }
+        if(sketch.getGeometry().getCoordinates()[0].length===2){
+          map.removeOverlay(measureTooltip);
+        }
+      }
+    })
+    
+    drawPolygon.on('drawstart', function (evt) {
+      sketch = evt.feature;
+      tooltipCoord = evt.coordinate;
+    
+      listener = sketch.getGeometry().on('change', function (evt) {
+        geom = evt.target;
+        output = formatTotalArea(geom);
+        tooltipCoord = geom.getInteriorPoint().getCoordinates();
+        checkPointElement = document.createElement('div');
+        checkPointElement.className = `ol-tooltip ol-tooltip-checkpoint lineString_${idNum}`;
+        paintPolygonOverlay(false,output);
+      });
+      
+      polygonOverlayPosition = map.on('pointermove',function(evt){
+        tooltipCoord = evt.coordinate;
+        measureTooltip.setPosition(tooltipCoord);
+      });
+    });
+
+    drawPolygon.on('drawend', function (evt) {
+        paintPolygonOverlay(true,output);
+        measureTooltipElement.id = `polygon_${idNum}`;
+        idNum++;
+        measureTooltipElement.className = 'ol-tooltip ol-tooltip-static';
+        measureTooltipElement = null;
+        measureTooltip.setOffset([0, -15]);
+        sketch = null;
+        createMeasureTooltip();
+        ol.Observable.unByKey(listener);
+        ol.Observable.unByKey(polygonOverlayPosition);
+      
+      document.querySelector('.deletePolygon').addEventListener('click', function (e) {
+        idNum--;
+        this.parentNode.parentNode.removeChild(this.parentNode);
+        $(`.${this.parentNode.id}`).remove();
+  
+        const currentNum = this.parentNode.id.split('_')[1] * 1;
+        sourceDrawnPolygon.removeFeature(sourceDrawnPolygon.getFeatures()[currentNum]);
+        let i=currentNum;
+        while(i<sourceDrawnPolygon.getFeatures().length){
+          document.querySelector(`#polygon_${i+1}`).id=`polygon_${i}`;
+          $(`.polygon_${i+1}`).addClass(`polygon_${i}`);
+          $(`.polygon_${i+1}`).removeClass(`polygon_${i+1}`);
+          i++;
+        }
+      });
+      map.removeInteraction(drawPolygon);
+    });
+  }
 }

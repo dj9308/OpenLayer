@@ -163,8 +163,6 @@ map.on('singleclick', function (evt) {
                 zoom : 13.7
             });
         });
-
-
         return true;
     });
 
